@@ -10,3 +10,7 @@ pip install kazoo
 docker pull zookeeper
 docker run -p 2181:2181 zookeeper
 ```
+
+![](qrcode.jpg)
+
+请关注公众号「码洞」，进入讨论组解答疑惑
