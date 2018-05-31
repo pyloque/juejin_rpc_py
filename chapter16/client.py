@@ -9,19 +9,6 @@ from kazoo.client import KazooClient
 
 zk_root = "/demo"
 
-
-def rpc(sock, in_, params):
-    response = json.dumps({"in": in_, "params": params})
-    length_prefix = struct.pack("I", len(response))
-    sock.send(length_prefix)
-    sock.sendall(response)
-    length_prefix = sock.recv(4)
-    length, = struct.unpack("I", length_prefix)
-    body = sock.recv(length)
-    response = json.loads(body)
-    return response["out"], response["result"]
-
-
 G = {"servers": None}  # 全局变量，RemoteServer对象列表
 
 
@@ -36,6 +23,24 @@ class RemoteServer(object):  # 封装rpc套接字对象
         if not self._socket:
             self.connect()
         return self._socket
+
+    def ping(self, twitter):
+        return self.rpc("ping", twitter)
+
+    def pi(self, n):
+        return self.rpc("pi", n)
+
+    def rpc(self, in_, params):
+        sock = self.socket
+        response = json.dumps({"in": in_, "params": params})
+        length_prefix = struct.pack("I", len(response))
+        sock.send(length_prefix)
+        sock.sendall(response)
+        length_prefix = sock.recv(4)
+        length, = struct.unpack("I", length_prefix)
+        body = sock.recv(length)
+        response = json.loads(body)
+        return response["out"], response["result"]
 
     def connect(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -59,7 +64,7 @@ def get_servers():
     current_addrs = set()  # 当前活跃地址列表
 
     def watch_servers(*args):  # 闭包函数
-        new_addrs = set()  
+        new_addrs = set()
         # 获取新的服务地址列表，并持续监听服务列表变动
         for child in zk.get_children(zk_root, watch=watch_servers):
             node = zk.get(zk_root + "/" + child)
@@ -107,9 +112,19 @@ if __name__ == '__main__':
         server = random_server()
         if not server:
             break  # 如果没有节点存活，就退出
-        time.sleep(1)
+        time.sleep(0.5)
         try:
-            out, result = rpc(server.socket, "ping", "ireader %d" % i)
+            out, result = server.ping("ireader %d" % i)
+            print server.addr, out, result
+        except Exception, ex:
+            server.close()  # 遇到错误，关闭连接
+            print ex
+        server = random_server()
+        if not server:
+            break  # 如果没有节点存活，就退出
+        time.sleep(0.5)
+        try:
+            out, result = server.pi(i)
             print server.addr, out, result
         except Exception, ex:
             server.close()  # 遇到错误，关闭连接

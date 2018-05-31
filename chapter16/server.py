@@ -2,6 +2,7 @@
 
 import os
 import sys
+import math
 import json
 import errno
 import struct
@@ -18,7 +19,8 @@ class RPCHandler(asyncore.dispatcher_with_send):
         asyncore.dispatcher_with_send.__init__(self, sock=sock)
         self.addr = addr
         self.handlers = {
-            "ping": self.ping
+            "ping": self.ping,
+            "pi": self.pi
         }
         self.rbuf = StringIO()
 
@@ -62,6 +64,13 @@ class RPCHandler(asyncore.dispatcher_with_send):
     def ping(self, params):
         self.send_result("pong", params)
 
+    def pi(self, n):
+        s = 0.0
+        for i in range(n+1):
+            s += 1.0/(2*i+1)/(2*i+1)
+        result = math.sqrt(8*s)
+        self.send_result("pi_r", result)
+
     def send_result(self, out, result):
         response = {"out": out, "result": result}
         body = json.dumps(response)
@@ -84,17 +93,17 @@ class RPCServer(asyncore.dispatcher):
         self.bind((host, port))
         self.listen(1)
         self.child_pids = []
-        if self.prefork(10):
-            self.register_zk()
-            self.register_parent_signal()
+        if self.prefork(10):  # 产生子进程
+            self.register_zk()  # 注册服务
+            self.register_parent_signal()  # 父进程善后处理
         else:
-            self.register_child_signal()
+            self.register_child_signal()  # 子进程善后处理
 
     def prefork(self, n):
         for i in range(n):
             pid = os.fork()
             if pid < 0:  # fork error
-                return False
+                raise
             if pid > 0:  # parent process
                 self.child_pids.append(pid)
                 continue
@@ -105,8 +114,9 @@ class RPCServer(asyncore.dispatcher):
     def register_zk(self):
         self.zk = KazooClient(hosts='127.0.0.1:2181')
         self.zk.start()
-        self.zk.ensure_path(self.zk_root)
+        self.zk.ensure_path(self.zk_root)  # 创建根节点
         value = json.dumps({"host": self.host, "port": self.port})
+        # 创建服务子节点
         self.zk.create(self.zk_rpc, value, ephemeral=True, sequence=True)
 
     def exit_parent(self, sig, frame):
@@ -140,7 +150,7 @@ class RPCServer(asyncore.dispatcher):
         print 'before reap'
         while True:
             try:
-                info = os.waitpid(-1, os.WNOHANG) # 收割任意子进程
+                info = os.waitpid(-1, os.WNOHANG)  # 收割任意子进程
                 break
             except OSError, ex:
                 if ex.args[0] == errno.ECHILD:
@@ -161,7 +171,7 @@ class RPCServer(asyncore.dispatcher):
 
     def exit_child(self, sig, frame):
         self.close()  # 关闭serversocket
-        asyncore.close_all()  #关闭所有clientsocket 
+        asyncore.close_all()  # 关闭所有clientsocket
         print 'all closed'
 
     def register_child_signal(self):
@@ -169,7 +179,7 @@ class RPCServer(asyncore.dispatcher):
         signal.signal(signal.SIGTERM, self.exit_child)
 
     def handle_accept(self):
-        pair = self.accept()
+        pair = self.accept()  # 接收新连接
         if pair is not None:
             sock, addr = pair
             RPCHandler(sock, addr)
@@ -179,4 +189,4 @@ if __name__ == '__main__':
     host = sys.argv[1]
     port = int(sys.argv[2])
     RPCServer(host, port)
-    asyncore.loop()
+    asyncore.loop()  # 启动事件循环
