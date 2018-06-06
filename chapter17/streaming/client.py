@@ -5,7 +5,7 @@ import pi_pb2_grpc
 
 
 def generate_request():
-    for i in range(1, 1000):
+    for i in range(1, 2):
         yield pi_pb2.PiRequest(n=i)
 
 

@@ -10,10 +10,13 @@ import pi_pb2_grpc
 class PiCalculatorServicer(pi_pb2_grpc.PiCalculatorServicer):
 
     def Calc(self, request, ctx):
+        if request.n <= 0:
+            ctx.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            ctx.set_details("request number should be positive")
+            return pi_pb2.PiResponse()
         s = 0.0
         for i in range(request.n):
             s += 1.0/(2*i+1)/(2*i+1)
-        time.sleep(0.01)
         return pi_pb2.PiResponse(value=math.sqrt(8*s))
 
 
