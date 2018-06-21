@@ -32,10 +32,10 @@ class RemoteServer(object):  # 封装rpc套接字对象
 
     def rpc(self, in_, params):
         sock = self.socket
-        response = json.dumps({"in": in_, "params": params})
-        length_prefix = struct.pack("I", len(response))
+        request = json.dumps({"in": in_, "params": params})
+        length_prefix = struct.pack("I", len(request))
         sock.send(length_prefix)
-        sock.sendall(response)
+        sock.sendall(request)
         length_prefix = sock.recv(4)
         length, = struct.unpack("I", length_prefix)
         body = sock.recv(length)
