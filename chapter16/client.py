@@ -34,7 +34,7 @@ class RemoteServer(object):  # 封装rpc套接字对象
         sock = self.socket
         request = json.dumps({"in": in_, "params": params})
         length_prefix = struct.pack("I", len(request))
-        sock.send(length_prefix)
+        sock.sendall(length_prefix)
         sock.sendall(request)
         length_prefix = sock.recv(4)
         length, = struct.unpack("I", length_prefix)

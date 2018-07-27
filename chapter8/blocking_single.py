@@ -37,8 +37,8 @@ def ping(conn, params):
 def send_result(conn, out, result):
     response = json.dumps({"out": out, "result": result})  # 响应消息体
     length_prefix = struct.pack("I", len(response))  # 响应长度前缀
-    conn.send(length_prefix)
-    conn.sendall(response)  # sendall = send + flush
+    conn.sendall(length_prefix)
+    conn.sendall(response)
 
 
 if __name__ == '__main__':

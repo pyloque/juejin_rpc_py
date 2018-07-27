@@ -10,8 +10,8 @@ import socket
 def rpc(sock, in_, params):
     request = json.dumps({"in": in_, "params": params})  # 请求消息体
     length_prefix = struct.pack("I", len(request))  # 请求长度前缀
-    sock.send(length_prefix)
-    sock.sendall(request)  # sendall = send + flush
+    sock.sendall(length_prefix)
+    sock.sendall(request)
     length_prefix = sock.recv(4)  # 响应长度前缀
     length, = struct.unpack("I", length_prefix)
     body = sock.recv(length)  # 响应消息体
